@@ -1,15 +1,24 @@
 ---
-framework: jest                  # Mention the testing framework mocha or jest
-postMerge:
-    pattern:
-    - "./packages/core/test/*.test.ts"
-    - "./packages/xstate-react/test/*.test.tsx"            # Glob pattern to path where tests that should run post-merge are written
+framework: jest
+blocklist:
+  - "./src/calculator.test.js##Blacklist a test"
+  - "./src/newFileTest.test.js##Comparision tests"
+licenseTier: xsmall
+postMerge: 
+  pattern: 
+    - "./packages/**/*.test.ts"
+    - "./packages/**/*.test.tsx"
+  strategy: 
+    threshold: <5|100s|30m|6h>
+    type: <commit|time>
 preMerge:
-    pattern:
-    - "./packages/core/test/*.test.ts"
-    - "./packages/xstate-react/test/*.test.tsx"                # Glob pattern to path where tests that should run pre-merge are written
+  pattern:
+    - "./packages/**/*.test.ts"
+    - "./packages/**/*.test.tsx"
 preRun:
-    - yarn install                   # Mention pre-run steps here
+     command:
+        - yarn install
 postRun:
-    - yarn --version                # Mention post-run steps here
-version: 2.0
+     command:
+        - yarn --version
+version: 2.1
