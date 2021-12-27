@@ -1,20 +1,17 @@
 ---
 framework: jest
-blocklist:
-  - "./src/calculator.test.js##Blacklist a test"
-  - "./src/newFileTest.test.js##Comparision tests"
 licenseTier: xsmall
 postMerge: 
   pattern: 
-    - "./packages/**/*.test.ts"
-    - "./packages/**/*.test.tsx"
+    - "./packages/core/test/*.test.ts"
+    - "./packages/xstate-react/test/*.test.tsx"
   strategy: 
     threshold: <5|100s|30m|6h>
     type: <commit|time>
 preMerge:
   pattern:
-    - "./packages/**/*.test.ts"
-    - "./packages/**/*.test.tsx"
+    - "./packages/core/test/*.test.ts"
+    - "./packages/xstate-react/test/*.test.tsx"
 preRun:
      command:
         - yarn install
