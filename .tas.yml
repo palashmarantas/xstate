@@ -1,22 +1,17 @@
 ---
-framework: jest
-licenseTier: xsmall
-postMerge: 
-  pattern: 
-    - "./packages/core/test/*.test.ts"
-    - "./packages/xstate-react/test/*.test.tsx"
-  strategy: 
-    threshold: <5|100s|30m|6h>
-    type: <commit|time>
+framework: jest     
+preRun:
+  command:
+    - yarn install 
 preMerge:
   pattern:
     - "./packages/core/test/*.test.ts"
     - "./packages/xstate-react/test/*.test.tsx"
-preRun:
-     command:
-        - yarn install
+postMerge:
+  pattern: 
+    - "./packages/core/test/*.test.ts"
+    - "./packages/xstate-react/test/*.test.tsx"
 postRun:
-     command:
-        - yarn --version
-version: 2.0
-
+  command:
+    - yarn --version
+version: 1.0
