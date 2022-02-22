@@ -7,9 +7,8 @@ preRun:
     - yarn run
 postMerge:
   pattern:
-     - "./packages/xstate-vue/test/*.test.ts"
-#     - "./packages/**/test/*.test.ts"
-#     - "./packages/xstate-react/test/*.test.tsx"
+    - "./packages/**/test/*.test.ts"
+    - "./packages/xstate-react/test/*.test.tsx"
 preMerge:
   pattern:
     - "./packages/**/test/*.test.ts"
