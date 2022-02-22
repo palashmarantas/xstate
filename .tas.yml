@@ -1,17 +1,20 @@
 ---
-framework: jest     
+framework: jest
 preRun:
   command:
-    - yarn install 
+    - yarn install
+    - yarn build
+    - yarn run
+postMerge:
+  pattern:
+    - "./packages/**/test/*.test.ts"
+    - "./packages/xstate-react/test/*.test.tsx"
 preMerge:
   pattern:
-    - "./packages/core/test/*.test.ts"
-    - "./packages/xstate-react/test/*.test.tsx"
-postMerge:
-  pattern: 
-    - "./packages/core/test/*.test.ts"
+    - "./packages/**/test/*.test.ts"
     - "./packages/xstate-react/test/*.test.tsx"
 postRun:
   command:
-    - yarn --version
+    - node --version
+configFile: jest.config.js
 version: 1.0
