@@ -1,16 +1,17 @@
 import { useCallback, useState } from 'react';
 import {
+  ActionFunction,
+  AnyStateMachine,
+  AreAllImplementationsAssumedToBeProvided,
   EventObject,
-  StateMachine,
-  State,
-  Interpreter,
+  InternalMachineOptions,
+  InterpreterFrom,
   InterpreterOptions,
-  MachineOptions,
+  State,
   StateConfig,
-  Typestate,
-  ActionFunction
+  StateFrom
 } from 'xstate';
-import { MaybeLazy, ReactActionFunction, ReactEffectType } from './types';
+import { MaybeLazy, Prop, ReactActionFunction, ReactEffectType } from './types';
 import { useInterpret } from './useInterpret';
 
 function createReactActionFunction<TContext, TEvent extends EventObject>(
@@ -56,46 +57,62 @@ export interface UseMachineOptions<TContext, TEvent extends EventObject> {
   state?: StateConfig<TContext, TEvent>;
 }
 
-export function useMachine<
-  TContext,
-  TEvent extends EventObject,
-  TTypestate extends Typestate<TContext> = { value: any; context: TContext }
->(
-  getMachine: MaybeLazy<StateMachine<TContext, any, TEvent, TTypestate>>,
-  options: Partial<InterpreterOptions> &
-    Partial<UseMachineOptions<TContext, TEvent>> &
-    Partial<MachineOptions<TContext, TEvent>> = {}
-): [
-  State<TContext, TEvent, any, TTypestate>,
-  Interpreter<TContext, any, TEvent, TTypestate>['send'],
-  Interpreter<TContext, any, TEvent, TTypestate>
-] {
-  const listener = useCallback(
-    (nextState: State<TContext, TEvent, any, TTypestate>) => {
-      // Only change the current state if:
-      // - the incoming state is the "live" initial state (since it might have new actors)
-      // - OR the incoming state actually changed.
-      //
-      // The "live" initial state will have .changed === undefined.
-      const initialStateChanged =
-        nextState.changed === undefined &&
-        Object.keys(nextState.children).length;
+type RestParams<
+  TMachine extends AnyStateMachine
+> = AreAllImplementationsAssumedToBeProvided<
+  TMachine['__TResolvedTypesMeta']
+> extends false
+  ? [
+      options: InterpreterOptions &
+        UseMachineOptions<TMachine['__TContext'], TMachine['__TEvent']> &
+        InternalMachineOptions<
+          TMachine['__TContext'],
+          TMachine['__TEvent'],
+          TMachine['__TResolvedTypesMeta'],
+          true
+        >
+    ]
+  : [
+      options?: InterpreterOptions &
+        UseMachineOptions<TMachine['__TContext'], TMachine['__TEvent']> &
+        InternalMachineOptions<
+          TMachine['__TContext'],
+          TMachine['__TEvent'],
+          TMachine['__TResolvedTypesMeta']
+        >
+    ];
 
-      if (nextState.changed || initialStateChanged) {
-        setState(nextState);
-      }
-    },
-    []
-  );
+type UseMachineReturn<
+  TMachine extends AnyStateMachine,
+  TInterpreter = InterpreterFrom<TMachine>
+> = [StateFrom<TMachine>, Prop<TInterpreter, 'send'>, TInterpreter];
 
-  const service = useInterpret(getMachine, options, listener);
+export function useMachine<TMachine extends AnyStateMachine>(
+  getMachine: MaybeLazy<TMachine>,
+  ...[options = {}]: RestParams<TMachine>
+): UseMachineReturn<TMachine> {
+  const listener = useCallback((nextState: StateFrom<TMachine>) => {
+    // Only change the current state if:
+    // - the incoming state is the "live" initial state (since it might have new actors)
+    // - OR the incoming state actually changed.
+    //
+    // The "live" initial state will have .changed === undefined.
+    const initialStateChanged =
+      nextState.changed === undefined && Object.keys(nextState.children).length;
+
+    if (nextState.changed || initialStateChanged) {
+      setState(nextState);
+    }
+  }, []);
+
+  const service = useInterpret(getMachine as any, options as any, listener);
 
   const [state, setState] = useState(() => {
     const { initialState } = service.machine;
     return (options.state
-      ? State.create(options.state)
-      : initialState) as State<TContext, TEvent, any, TTypestate>;
+      ? State.create(options.state as any)
+      : initialState) as StateFrom<TMachine>;
   });
 
-  return [state, service.send, service];
+  return [state, service.send, service] as any;
 }

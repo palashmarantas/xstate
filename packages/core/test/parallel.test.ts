@@ -1,5 +1,5 @@
 import { raise, assign } from '../src/actions';
-import { createMachine, interpret, Machine } from '../src';
+import { createMachine, interpret, Machine, StateValue } from '../src';
 import { testMultiTransition } from './utils';
 
 const composerMachine = Machine({
@@ -504,7 +504,7 @@ describe('parallel states', () => {
     });
   });
 
-  const expected = {
+  const expected: Record<string, Record<string, StateValue>> = {
     'bold.off': {
       TOGGLE_BOLD: {
         bold: 'on',
@@ -735,7 +735,7 @@ describe('parallel states', () => {
     });
   });
 
-  // https://github.com/davidkpiano/xstate/issues/191
+  // https://github.com/statelyai/xstate/issues/191
   describe('nested flat parallel states', () => {
     const machine = Machine({
       initial: 'A',
@@ -825,7 +825,7 @@ describe('parallel states', () => {
   });
 
   describe('other', () => {
-    // https://github.com/davidkpiano/xstate/issues/518
+    // https://github.com/statelyai/xstate/issues/518
     it('regions should be able to transition to orthogonal regions', () => {
       const testMachine = Machine({
         id: 'app',
@@ -886,7 +886,7 @@ describe('parallel states', () => {
       ).toBe(true);
     });
 
-    // https://github.com/davidkpiano/xstate/issues/531
+    // https://github.com/statelyai/xstate/issues/531
     it('should calculate the entry set for external transitions in parallel states', () => {
       const testMachine = Machine<{ log: string[] }>({
         id: 'test',

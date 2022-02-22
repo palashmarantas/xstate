@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useMachine, useService, useActor } from '../src';
+import { useMachine, useActor } from '../src';
 import {
   Machine,
   assign,
@@ -8,7 +8,10 @@ import {
   doneInvoke,
   State,
   createMachine,
-  send
+  send,
+  InterpreterFrom,
+  StateFrom,
+  AnyState
 } from 'xstate';
 import {
   render,
@@ -43,6 +46,7 @@ describe('useMachine hook', () => {
       },
       loading: {
         invoke: {
+          id: 'fetchData',
           src: 'fetchData',
           onDone: {
             target: 'success',
@@ -66,7 +70,7 @@ describe('useMachine hook', () => {
 
   const Fetcher: React.FC<{
     onFetch: () => Promise<any>;
-    persistedState?: State<any, any>;
+    persistedState?: AnyState;
   }> = ({
     onFetch = () => new Promise((res) => res('some data')),
     persistedState
@@ -312,9 +316,9 @@ describe('useMachine hook', () => {
     });
 
     const ServiceApp: React.FC<{
-      service: Interpreter<TestContext, any, any, TestState>;
+      service: InterpreterFrom<typeof machine>;
     }> = ({ service }) => {
-      const [state] = useService(service);
+      const [state] = useActor(service);
 
       if (state.matches('loaded')) {
         const name = state.context.user.name;
@@ -746,7 +750,7 @@ describe('useMachine hook', () => {
       }
     });
 
-    const App = ({ isAwesome }) => {
+    const App = ({ isAwesome }: { isAwesome: boolean }) => {
       const [state, send] = useMachine(machine, {
         guards: {
           isAwesome: () => isAwesome
@@ -884,7 +888,7 @@ describe('useMachine (strict mode)', () => {
     done();
   });
 
-  // https://github.com/davidkpiano/xstate/issues/1334
+  // https://github.com/statelyai/xstate/issues/1334
   it('delayed transitions should work when initializing from a rehydrated state', () => {
     jest.useFakeTimers();
     try {
@@ -908,7 +912,7 @@ describe('useMachine (strict mode)', () => {
 
       const persistedState = JSON.stringify(testMachine.initialState);
 
-      let currentState;
+      let currentState: StateFrom<typeof testMachine>;
 
       const Test = () => {
         const [state, send] = useMachine(testMachine, {
@@ -935,7 +939,7 @@ describe('useMachine (strict mode)', () => {
         jest.advanceTimersByTime(110);
       });
 
-      expect(currentState.matches('idle')).toBe(true);
+      expect(currentState!.matches('idle')).toBe(true);
     } finally {
       jest.useRealTimers();
     }

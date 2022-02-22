@@ -11,7 +11,6 @@ import {
   AssignAction,
   Condition,
   Subscribable,
-  StateMachine,
   ConditionPredicate,
   SCXML,
   StateLike,
@@ -35,6 +34,7 @@ import { IS_PRODUCTION } from './environment';
 import { StateNode } from './StateNode';
 import { State } from './State';
 import { Actor } from './Actor';
+import { AnyStateMachine } from '.';
 
 export function keys<T extends object>(value: T): Array<keyof T & string> {
   return Object.keys(value) as Array<keyof T & string>;
@@ -529,11 +529,21 @@ export function isObservable<T>(value: any): value is Subscribable<T> {
   }
 }
 
-export const symbolObservable = (() =>
-  (typeof Symbol === 'function' && (Symbol as any).observable) ||
-  '@@observable')();
+export const symbolObservable: typeof Symbol.observable = (() =>
+  (typeof Symbol === 'function' && Symbol.observable) ||
+  '@@observable')() as any;
 
-export function isMachine(value: any): value is StateMachine<any, any, any> {
+// TODO: to be removed in v5, left it out just to minimize the scope of the change and maintain compatibility with older versions of integration paackages
+export const interopSymbols = {
+  [symbolObservable]: function () {
+    return this;
+  },
+  [Symbol.observable]: function () {
+    return this;
+  }
+};
+
+export function isMachine(value: any): value is AnyStateMachine {
   try {
     return '__xstatenode' in value;
   } catch (e) {
@@ -652,7 +662,7 @@ export function reportUnhandledExceptionOnInvocation(
 }
 
 export function evaluateGuard<TContext, TEvent extends EventObject>(
-  machine: StateNode<TContext, any, TEvent, any>,
+  machine: StateNode<TContext, any, TEvent, any, any>,
   guard: Guard<TContext, TEvent>,
   context: TContext,
   _event: SCXML.Event<TEvent>,
@@ -674,7 +684,7 @@ export function evaluateGuard<TContext, TEvent extends EventObject>(
     );
   }
 
-  const condFn = guards[guard.type];
+  const condFn = guards?.[guard.type];
 
   if (!condFn) {
     throw new Error(
@@ -682,7 +692,7 @@ export function evaluateGuard<TContext, TEvent extends EventObject>(
     );
   }
 
-  return condFn(context, _event.data, guardMeta);
+  return (condFn as any)(context, _event.data, guardMeta);
 }
 
 export function toInvokeSource(
@@ -711,4 +721,8 @@ export function toObserver<T>(
     error: errorHandler || noop,
     complete: completionHandler || noop
   };
+}
+
+export function createInvokeId(stateNodeId: string, index: number): string {
+  return `${stateNodeId}:invocation[${index}]`;
 }

@@ -4,11 +4,13 @@ import {
   interpret,
   EventObject,
   EventData,
-  Observer
+  Observer,
+  toActorRef
 } from 'xstate';
 import { XStateDevInterface } from 'xstate/lib/devTools';
 import { toSCXMLEvent, toEventObject, toObserver } from 'xstate/lib/utils';
 import { createInspectMachine, InspectMachineEvent } from './inspectMachine';
+import { stringifyMachine, stringifyState } from './serialize';
 import type {
   Inspector,
   InspectorOptions,
@@ -60,7 +62,7 @@ export function createDevTools(): XStateDevInterface {
   };
 }
 
-const defaultInspectorOptions: InspectorOptions = {
+const defaultInspectorOptions = {
   url: 'https://statecharts.io/inspect',
   iframe: () =>
     document.querySelector<HTMLIFrameElement>('iframe[data-xstate]'),
@@ -68,7 +70,8 @@ const defaultInspectorOptions: InspectorOptions = {
     const devTools = createDevTools();
     globalThis.__xstate__ = devTools;
     return devTools;
-  }
+  },
+  serialize: undefined
 };
 
 const getFinalOptions = (options?: Partial<InspectorOptions>) => {
@@ -81,9 +84,7 @@ const getFinalOptions = (options?: Partial<InspectorOptions>) => {
   };
 };
 
-export function inspect(
-  options?: Partial<InspectorOptions>
-): Inspector | undefined {
+export function inspect(options?: InspectorOptions): Inspector | undefined {
   const { iframe, url, devTools } = getFinalOptions(options);
 
   if (iframe === null) {
@@ -94,7 +95,7 @@ export function inspect(
     return undefined;
   }
 
-  const inspectMachine = createInspectMachine(devTools);
+  const inspectMachine = createInspectMachine(devTools, options);
   const inspectService = interpret(inspectMachine).start();
   const listeners = new Set<Observer<any>>();
 
@@ -138,11 +139,15 @@ export function inspect(
     inspectService.send({ type: 'unload' });
   });
 
+  const stringifyWithSerializer = (value: any) =>
+    stringify(value, options?.serialize);
+
   devTools.onRegister((service) => {
+    const state = service.state || service.initialState;
     inspectService.send({
       type: 'service.register',
-      machine: stringify(service.machine),
-      state: stringify(service.state || service.initialState),
+      machine: stringifyMachine(service.machine, options?.serialize),
+      state: stringifyState(state, options?.serialize),
       sessionId: service.sessionId,
       id: service.id,
       parent: service.parent?.sessionId
@@ -150,7 +155,7 @@ export function inspect(
 
     inspectService.send({
       type: 'service.event',
-      event: stringify((service.state || service.initialState)._event),
+      event: stringifyWithSerializer(state._event),
       sessionId: service.sessionId
     });
 
@@ -165,7 +170,7 @@ export function inspect(
     ) {
       inspectService.send({
         type: 'service.event',
-        event: stringify(
+        event: stringifyWithSerializer(
           toSCXMLEvent(toEventObject(event as EventObject, payload))
         ),
         sessionId: service.sessionId
@@ -175,13 +180,15 @@ export function inspect(
     };
 
     service.subscribe((state) => {
-      // filter out synchronous notification from within `.start()` call when the `service.state` has not yet been assigned
+      // filter out synchronous notification from within `.start()` call
+      // when the `service.state` has not yet been assigned
       if (state === undefined) {
         return;
       }
       inspectService.send({
         type: 'service.state',
-        state: stringify(state),
+        // TODO: investigate usage of structuredClone in browsers if available
+        state: stringifyState(state, options?.serialize),
         sessionId: service.sessionId
       });
     });
@@ -248,7 +255,7 @@ export function createWindowReceiver(
 
   ownWindow.addEventListener('message', handler);
 
-  const actorRef: InspectReceiver = {
+  const actorRef: InspectReceiver = toActorRef({
     id: 'xstate.windowReceiver',
 
     send(event) {
@@ -276,7 +283,7 @@ export function createWindowReceiver(
     getSnapshot() {
       return latestEvent;
     }
-  };
+  });
 
   actorRef.send({
     type: 'xstate.inspecting'
@@ -293,10 +300,10 @@ export function createWebSocketReceiver(
   const observers = new Set<Observer<ParsedReceiverEvent>>();
   let latestEvent: ParsedReceiverEvent;
 
-  const actorRef: InspectReceiver = {
+  const actorRef: InspectReceiver = toActorRef({
     id: 'xstate.webSocketReceiver',
     send(event) {
-      ws.send(JSON.stringify(event));
+      ws.send(stringify(event, options.serialize));
     },
     subscribe(next, onError?, onComplete?) {
       const observer = toObserver(next, onError, onComplete);
@@ -312,7 +319,7 @@ export function createWebSocketReceiver(
     getSnapshot() {
       return latestEvent;
     }
-  };
+  });
 
   ws.onopen = () => {
     actorRef.send({
