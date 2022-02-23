@@ -5,14 +5,12 @@ preRun:
     - yarn install
     - yarn build
     - yarn run
-postMerge:
-  pattern:
-    - "./packages/**/test/*.test.ts"
-    - "./packages/xstate-react/test/*.test.tsx"
 preMerge:
   pattern:
-    - "./packages/**/test/*.test.ts"
-    - "./packages/xstate-react/test/*.test.tsx"
+    - "./packages/**/test/*.test.{ts,tsx}"
+postMerge:
+  pattern:
+    - "./packages/**/test/*.test.{ts,tsx}"
 postRun:
   command:
     - node --version
